@@ -12,15 +12,22 @@ bulbCharacteristic = "0xffe9"
 
 -- MODEL
 
-type alias Model =
-    { connected: Bool
-    , deviceName: String
-    , deviceId: String
+type alias Device = 
+    { name : String
+    , id : String
+    }
+
+type Connection = 
+    NotConnected
+    | Connected Device
+
+type alias Model = 
+    { connection: Connection 
     }
 
 init : ( Model, Cmd Msg )
 init =
-    (Model False "" "", Cmd.none )
+    (Model NotConnected, Cmd.none )
 
 -- MESSAGES
 
@@ -28,52 +35,64 @@ type Msg
     = Disconnect
     | RequestDevice
     | SetColor Int Int Int
-    | Connected Bluetooth.DeviceInfo
+    | DeviceConnected Bluetooth.DeviceInfo
 
 -- VIEW
 
 view : Model -> Html Msg
 view model =
-    if model.connected then
-        div []
-            [   text "Connected to: "
-            ,   text (model.deviceName)
+    case model.connection of
+        Connected device ->
+            div []
+                [   text "Connected to: "
+                ,   text (device.name)
 
-            ,   h3 [] [ text "Connection" ]
-            ,   button [ onClick Disconnect ] [ text "Disconnect" ]
+                ,   h3 [] [ text "Connection" ]
+                ,   button [ onClick Disconnect ] [ text "Disconnect" ]
 
-            ,   h3 [] [ text "Colors" ]
-            ,   button [ onClick (SetColor 0xff 0 0)] [ text "Red"]
-            ,   button [ onClick (SetColor 0 0xff 0)] [ text "Green"]
-            ,   button [ onClick (SetColor 0 0 0xff)] [ text "Blue"]
-            ,   button [ onClick (SetColor 0 0 0)] [ text "Off"]
-            ]
-    else
-        div []
-            [ button [ onClick RequestDevice ] [ text "Connect" ] ]
+                ,   h3 [] [ text "Colors" ]
+                ,   button [ onClick (SetColor 0xff 0 0)] [ text "Red"]
+                ,   button [ onClick (SetColor 0 0xff 0)] [ text "Green"]
+                ,   button [ onClick (SetColor 0 0 0xff)] [ text "Blue"]
+                ,   button [ onClick (SetColor 0 0 0)] [ text "Off"]
+                ]
+
+        NotConnected ->
+            div []
+                [ button [ onClick RequestDevice ] [ text "Connect" ] ]
 
 -- UPDATE
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        Disconnect ->
-            ( Model False "" "", Bluetooth.disconnect model.deviceId )
+    case model.connection of 
+        NotConnected -> 
+            case msg of 
+                RequestDevice ->
+                    ( model, Bluetooth.requestDevice bulbService )
 
-        RequestDevice ->
-            ( model, Bluetooth.requestDevice bulbService )
+                DeviceConnected deviceInfo ->
+                    ( Model (Connected (Device deviceInfo.name deviceInfo.id)), Cmd.none)
 
-        Connected deviceInfo ->
-            ( Model True deviceInfo.name deviceInfo.id, Cmd.none)
+                otherwise -> 
+                    ( model, Cmd.none )
 
-        SetColor r g b ->
-            ( model, Bluetooth.writeValue (Bluetooth.WriteParams model.deviceId bulbService bulbCharacteristic [0x56, r, g, b, 0x00, 0xf0, 0xaa]))
+        Connected device -> 
+            case msg of
+                Disconnect ->
+                    ( Model NotConnected, Bluetooth.disconnect device.id )
+
+                SetColor r g b ->
+                    ( model, Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic [0x56, r, g, b, 0x00, 0xf0, 0xaa]))
+
+                otherwise -> 
+                    ( model, Cmd.none )
 
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    (Bluetooth.devices Connected)
+    (Bluetooth.devices DeviceConnected)
 
 -- MAIN
 
