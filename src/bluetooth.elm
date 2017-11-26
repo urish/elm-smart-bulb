@@ -20,3 +20,5 @@ type alias WriteParams =
 port writeValue : WriteParams -> Cmd cmd
 
 port disconnect : String -> Cmd cmd
+
+port error : (String -> msg) -> Sub msg

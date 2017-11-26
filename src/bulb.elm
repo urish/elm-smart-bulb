@@ -1,7 +1,8 @@
 module App exposing (..)
 
-import Html exposing (Html, button, div, text, h3, program)
+import Html exposing (Html, button, div, text, h1, h3, p, program)
 import Html.Events exposing (onClick)
+import RemoteData exposing (RemoteData(..))
 
 import Bluetooth exposing (requestDevice, devices)
 
@@ -17,17 +18,18 @@ type alias Device =
     , id : String
     }
 
-type Connection = 
-    NotConnected
-    | Connected Device
+type alias BluetoothError = 
+    String
+
+type alias BluetoothData = RemoteData BluetoothError Device
 
 type alias Model = 
-    { connection: Connection 
+    { connection: BluetoothData
     }
 
 init : ( Model, Cmd Msg )
 init =
-    (Model NotConnected, Cmd.none )
+    (Model NotAsked, Cmd.none )
 
 -- MESSAGES
 
@@ -36,13 +38,15 @@ type Msg
     | RequestDevice
     | SetColor Int Int Int
     | DeviceConnected Bluetooth.DeviceInfo
+    | Error BluetoothError
+    | Restart
 
 -- VIEW
 
 view : Model -> Html Msg
 view model =
     case model.connection of
-        Connected device ->
+        Success device ->
             div []
                 [   text "Connected to: "
                 ,   text (device.name)
@@ -57,42 +61,70 @@ view model =
                 ,   button [ onClick (SetColor 0 0 0)] [ text "Off"]
                 ]
 
-        NotConnected ->
+        NotAsked ->
             div []
                 [ button [ onClick RequestDevice ] [ text "Connect" ] ]
+
+        Loading ->
+            div []
+                [ text "Connecting..."]
+
+        Failure error ->
+            div []
+                [ h1 [] [text "Connection error"]
+                , p [] [text error]
+                , button [ onClick Restart ] [ text "Restart" ]
+                ]
 
 -- UPDATE
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model.connection of 
-        NotConnected -> 
+        NotAsked -> 
             case msg of 
                 RequestDevice ->
-                    ( model, Bluetooth.requestDevice bulbService )
-
-                DeviceConnected deviceInfo ->
-                    ( Model (Connected (Device deviceInfo.name deviceInfo.id)), Cmd.none)
+                    ( Model Loading, Bluetooth.requestDevice bulbService )
 
                 otherwise -> 
                     ( model, Cmd.none )
 
-        Connected device -> 
+        Success device -> 
             case msg of
                 Disconnect ->
-                    ( Model NotConnected, Bluetooth.disconnect device.id )
+                    ( Model NotAsked, Bluetooth.disconnect device.id )
 
                 SetColor r g b ->
                     ( model, Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic [0x56, r, g, b, 0x00, 0xf0, 0xaa]))
 
+                Error err ->
+                    ( Model (Failure err), Cmd.none )
+
                 otherwise -> 
                     ( model, Cmd.none )
 
+        otherwise ->
+            case msg of 
+                DeviceConnected deviceInfo ->
+                    ( Model (Success (Device deviceInfo.name deviceInfo.id)), Cmd.none)
+
+                Error err ->
+                    ( Model (Failure err), Cmd.none )
+                
+                Restart ->
+                    ( Model NotAsked, Cmd.none )
+
+                otherwise ->
+                    ( model, Cmd.none)
+        
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    (Bluetooth.devices DeviceConnected)
+    Sub.batch
+        [ (Bluetooth.devices DeviceConnected)
+        , (Bluetooth.error Error)
+    ]
 
 -- MAIN
 

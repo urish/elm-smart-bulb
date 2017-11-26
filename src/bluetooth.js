@@ -20,8 +20,7 @@
                 name: device.name
             });
         } catch (err) {
-            // TODO report to Elm
-            console.error(err);
+            app.ports.error.send(err.toString());
         }
     });
 
@@ -32,12 +31,11 @@
                 const characteristic = await service.getCharacteristic(parseUuid(writeParams.characteristic));
                 await characteristic.writeValue(new Uint8Array(writeParams.value));
             } else {
-                // TODO report to Elm
+                app.ports.error.send(`Device ${writeParams.device} not found!`);
                 console.error(`Device ${writeParams.device} not found!`);
             }
         } catch (err) {
-            // TODO report to Elm
-            console.error(err);
+            app.ports.error.send(err.toString());
         }
     });
 
@@ -46,8 +44,7 @@
             gattServers.get(deviceId).disconnect();
             gattServers.delete(deviceId);
         } else {
-            // TODO report to Elm
-            console.error(`Device ${deviceId} not found!`);
+            app.ports.error.send(`Device ${deviceId} not found!`);
         }
     });
 })();
