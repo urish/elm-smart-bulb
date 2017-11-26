@@ -27,6 +27,36 @@ type alias Model =
     { connection: BluetoothData
     }
 
+type Color = Red | Green | Blue
+
+type alias Rgb = (Int, Int, Int)
+
+type BulbState = 
+    On Color
+    | Off
+
+getColorFromBulbState: BulbState -> Rgb
+getColorFromBulbState state =
+    case state of
+        On Red ->
+            (255, 0, 0)
+
+        On Green ->
+            (0, 255, 0)
+
+        On Blue ->
+            (0, 0, 255)
+    
+        Off ->
+            (0, 0, 0)
+
+getBulbCommand: BulbState -> List Int
+getBulbCommand state =
+    let 
+        (r, g, b) = (getColorFromBulbState state)
+    in
+        [0x56, r, g, b, 0x00, 0xf0, 0xaa]
+
 init : ( Model, Cmd Msg )
 init =
     (Model NotAsked, Cmd.none )
@@ -36,7 +66,7 @@ init =
 type Msg
     = Disconnect
     | RequestDevice
-    | SetColor Int Int Int
+    | SetBulbState BulbState
     | DeviceConnected Bluetooth.DeviceInfo
     | Error BluetoothError
     | Restart
@@ -55,10 +85,10 @@ view model =
                 ,   button [ onClick Disconnect ] [ text "Disconnect" ]
 
                 ,   h3 [] [ text "Colors" ]
-                ,   button [ onClick (SetColor 0xff 0 0)] [ text "Red"]
-                ,   button [ onClick (SetColor 0 0xff 0)] [ text "Green"]
-                ,   button [ onClick (SetColor 0 0 0xff)] [ text "Blue"]
-                ,   button [ onClick (SetColor 0 0 0)] [ text "Off"]
+                ,   button [ onClick (SetBulbState (On Red))] [ text "Red"]
+                ,   button [ onClick (SetBulbState (On Green))] [ text "Green"]
+                ,   button [ onClick (SetBulbState (On Blue))] [ text "Blue"]
+                ,   button [ onClick (SetBulbState Off)] [ text "Off"]
                 ]
 
         NotAsked ->
@@ -94,8 +124,8 @@ update msg model =
                 Disconnect ->
                     ( Model NotAsked, Bluetooth.disconnect device.id )
 
-                SetColor r g b ->
-                    ( model, Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic [0x56, r, g, b, 0x00, 0xf0, 0xaa]))
+                SetBulbState state ->
+                    ( model, Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic (getBulbCommand state)))
 
                 Error err ->
                     ( Model (Failure err), Cmd.none )
