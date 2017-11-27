@@ -9,12 +9,12 @@ import RemoteData exposing (RemoteData(..))
 -- CONSTANTS
 
 
-bulbService: String
+bulbService : String
 bulbService =
     "0xffe5"
 
 
-bulbCharacteristic: String
+bulbCharacteristic : String
 bulbCharacteristic =
     "0xffe9"
 
@@ -40,6 +40,26 @@ type alias BluetoothData =
 type alias Model =
     { connection : BluetoothData
     }
+
+
+isNotAsked : BluetoothData -> Bool
+isNotAsked data =
+    case data of
+        NotAsked ->
+            True
+
+        otherwise ->
+            False
+
+
+getDevice : BluetoothData -> Maybe Device
+getDevice data =
+    case data of
+        Success device ->
+            Just device
+
+        otherwise ->
+            Nothing
 
 
 type Color
@@ -140,44 +160,45 @@ view model =
 -- UPDATE
 
 
+setColorMessage : Device -> BulbState -> Cmd Msg
+setColorMessage device state =
+    Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic (getBulbCommand state))
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model.connection of
-        NotAsked ->
-            case msg of
-                RequestDevice ->
-                    ( Model Loading, Bluetooth.requestDevice bulbService )
+    let
+        noChange =
+            ( model, Cmd.none )
 
-                otherwise ->
-                    ( model, Cmd.none )
+        device =
+            getDevice model.connection
+    in
+    case msg of
+        RequestDevice ->
+            if isNotAsked model.connection then
+                ( Model Loading, Bluetooth.requestDevice bulbService )
+            else
+                noChange
 
-        Success device ->
-            case msg of
-                Disconnect ->
-                    ( Model NotAsked, Bluetooth.disconnect device.id )
+        DeviceConnected deviceInfo ->
+            ( Model (Success (Device deviceInfo.name deviceInfo.id)), Cmd.none )
 
-                SetBulbState state ->
-                    ( model, Bluetooth.writeValue (Bluetooth.WriteParams device.id bulbService bulbCharacteristic (getBulbCommand state)) )
+        Disconnect ->
+            device
+                |> Maybe.map (\device -> ( Model NotAsked, Bluetooth.disconnect device.id ))
+                |> Maybe.withDefault noChange
 
-                Error err ->
-                    ( Model (Failure err), Cmd.none )
+        SetBulbState state ->
+            device
+                |> Maybe.map (\device -> ( model, setColorMessage device state ))
+                |> Maybe.withDefault noChange
 
-                otherwise ->
-                    ( model, Cmd.none )
+        Error err ->
+            ( Model (Failure err), Cmd.none )
 
-        otherwise ->
-            case msg of
-                DeviceConnected deviceInfo ->
-                    ( Model (Success (Device deviceInfo.name deviceInfo.id)), Cmd.none )
-
-                Error err ->
-                    ( Model (Failure err), Cmd.none )
-
-                Restart ->
-                    ( Model NotAsked, Cmd.none )
-
-                otherwise ->
-                    ( model, Cmd.none )
+        Restart ->
+            ( Model NotAsked, Cmd.none )
 
 
 
@@ -194,6 +215,7 @@ subscriptions model =
 
 
 -- MAIN
+
 
 main : Program Never Model Msg
 main =
