@@ -1,9 +1,9 @@
 module App exposing (..)
 
-import Html exposing (Html, button, div, text, h1, h3, p, program)
+import Bluetooth exposing (devices, requestDevice)
+import Html exposing (Html, button, div, h1, h3, p, program, text)
 import Html.Events exposing (onClick)
 import RemoteData exposing (RemoteData(..))
-import Bluetooth exposing (requestDevice, devices)
 
 
 -- CONSTANTS
@@ -75,9 +75,9 @@ getBulbCommand : BulbState -> List Int
 getBulbCommand state =
     let
         ( r, g, b ) =
-            (getColorFromBulbState state)
+            getColorFromBulbState state
     in
-        [ 0x56, r, g, b, 0x00, 0xF0, 0xAA ]
+    [ 0x56, r, g, b, 0x00, 0xF0, 0xAA ]
 
 
 init : ( Model, Cmd Msg )
@@ -108,7 +108,7 @@ view model =
         Success device ->
             div []
                 [ text "Connected to: "
-                , text (device.name)
+                , text device.name
                 , h3 [] [ text "Connection" ]
                 , button [ onClick Disconnect ] [ text "Disconnect" ]
                 , h3 [] [ text "Colors" ]
@@ -185,8 +185,8 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ (Bluetooth.devices DeviceConnected)
-        , (Bluetooth.error Error)
+        [ Bluetooth.devices DeviceConnected
+        , Bluetooth.error Error
         ]
 
 
