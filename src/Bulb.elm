@@ -9,10 +9,12 @@ import RemoteData exposing (RemoteData(..))
 -- CONSTANTS
 
 
+bulbService: String
 bulbService =
     "0xffe5"
 
 
+bulbCharacteristic: String
 bulbCharacteristic =
     "0xffe9"
 
@@ -193,7 +195,7 @@ subscriptions model =
 
 -- MAIN
 
-
+main : Program Never Model Msg
 main =
     program
         { init = init
