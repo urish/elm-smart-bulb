@@ -52,16 +52,6 @@ isNotAsked data =
             False
 
 
-getDevice : BluetoothData -> Maybe Device
-getDevice data =
-    case data of
-        Success device ->
-            Just device
-
-        otherwise ->
-            Nothing
-
-
 type Color
     = Red
     | Green
@@ -172,7 +162,7 @@ update msg model =
             ( model, Cmd.none )
 
         device =
-            getDevice model.connection
+            RemoteData.toMaybe model.connection
     in
     case msg of
         RequestDevice ->
