@@ -1,4 +1,4 @@
-module App exposing (..)
+module Bulb exposing (..)
 
 import Bluetooth exposing (devices, requestDevice)
 import Html exposing (Html, button, div, h1, h3, p, program, text)
