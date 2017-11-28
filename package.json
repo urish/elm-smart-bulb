@@ -1,0 +1,16 @@
+{
+  "name": "elm-smart-bulb",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:urish/elm-smart-bulb.git",
+  "author": "Uri Shaked",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "test": "elm-test"
+  },
+  "devDependencies": {
+    "elm": "^0.18.0",
+    "elm-test": "^0.18.10"
+  }
+}
